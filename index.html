@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LabWave Demo</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <!-- 배경(별/그라디언트) -->
+  <div class="bg" aria-hidden="true">
+    <div class="stars"></div>
+    <div class="stars stars2"></div>
+    <div class="glow"></div>
+  </div>
+
+  <!-- 상단바 -->
+  <header class="navbar">
+    <div class="container nav-inner">
+      <div class="brand">
+        <div class="brand-mark">L</div>
+        <div class="brand-name">LabWave</div>
+      </div>
+
+      <nav class="nav">
+        <a href="#projects">프로젝트</a>
+        <a href="#labs">연구실</a>
+        <a href="#content">과학 콘텐츠</a>
+        <a href="#about">LabWave 소개</a>
+      </nav>
+
+      <div class="nav-actions">
+        <a class="nav-link subtle" href="#login">로그인</a>
+        <a class="btn btn-primary btn-sm" href="#join">후원하기</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <section class="hero" id="top">
+      <div class="container hero-inner">
+        <div class="pill">
+          <span class="dot"></span>
+          새로운 과학 후원 경험
+        </div>
+
+        <h1 class="hero-title">
+          연구실의 팬이 되는<br />
+          가장 쉬운 방법, <span class="accent">LabWave</span>
+        </h1>
+
+        <p class="hero-sub">
+          논문 너머, 과학자의 여정을 함께하다<br />
+          <span class="accent2">당신의 후원이 과학의 내일을 만듭니다</span>
+        </p>
+
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="#join">지금 연구 후원하기</a>
+          <a class="btn btn-ghost" href="#fields">연구 분야 둘러보기</a>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-value">0,000+</div>
+            <div class="stat-label">진행 중인 연구</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">00억+</div>
+            <div class="stat-label">누적 후원금</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">00%</div>
+            <div class="stat-label">성공률</div>
+          </div>
+        </div>
+
+        <div class="scroll-hint" aria-hidden="true">
+          <div class="mouse"></div>
+        </div>
+      </div>
+
+      <div class="hero-wave" aria-hidden="true"></div>
+    </section>
+
+    <!-- RESEARCH FIELDS -->
+    <section id="fields" class="section">
+      <div class="container">
+        <div class="section-head">
+          <span class="section-pill">Research Fields</span>
+          <h2 class="section-title">관심 있는 과학 분야를 선택하세요</h2>
+          <p class="section-sub">
+            각 분야의 최신 연구와 진행 중인 프로젝트를 확인해보세요
+          </p>
+        </div>
+
+        <div class="field-grid">
+          <article class="field-card">
+            <div class="field-icon">🧬</div>
+            <h3 class="field-title">의학 · 생명</h3>
+            <p class="field-desc">DNA, 세포, 질병 연구</p>
+            <div class="chips">
+              <span class="chip chip-purple">00+ 프로젝트</span>
+              <span class="chip chip-pink">진행중</span>
+            </div>
+          </article>
+
+          <article class="field-card">
+            <div class="field-icon">🌍</div>
+            <h3 class="field-title">환경 · 기후</h3>
+            <p class="field-desc">지구, 데이터, 기후변화</p>
+            <div class="chips">
+              <span class="chip chip-green">00+ 프로젝트</span>
+              <span class="chip chip-teal">진행중</span>
+            </div>
+          </article>
+
+          <article class="field-card">
+            <div class="field-icon">💡</div>
+            <h3 class="field-title">생활 · 기술</h3>
+            <p class="field-desc">스마트홈, AI, 일상기술</p>
+            <div class="chips">
+              <span class="chip chip-blue">00+ 프로젝트</span>
+              <span class="chip chip-sky">진행중</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOT TOPICS -->
+    <section id="content" class="section section-tight">
+      <div class="container">
+        <div class="section-head">
+          <span class="section-pill">Hot Topics</span>
+          <h2 class="section-title">지금 뜨거운 과학 주제</h2>
+          <p class="section-sub">전 세계가 주목하는 최신 연구 트렌드를 만나보세요</p>
+        </div>
+
+        <div class="topic-grid">
+          <article class="topic-card">
+            <div class="topic-media media-1">
+              <span class="badge badge-pink">양자컴퓨팅</span>
+              <span class="badge badge-teal badge-right">+127%</span>
+            </div>
+            <div class="topic-body">
+              <h3 class="topic-title">양자컴퓨터가 바꿀 미래의 계산</h3>
+              <p class="topic-desc">
+                기존 컴퓨터로 수백년 걸릴 계산을 단 몇 분에… 양자역학으로 풀어낸 차세대 컴퓨팅 혁명
+              </p>
+              <div class="topic-meta">
+                <span class="topic-meta-left">👥 1,247명 후원중</span>
+                <a class="topic-link" href="#projects">자세히 보기 →</a>
+              </div>
+            </div>
+          </article>
+
+          <article class="topic-card">
+            <div class="topic-media media-2">
+              <span class="badge badge-green">유전자 편집</span>
+              <span class="badge badge-sky badge-right">+203%</span>
+            </div>
+            <div class="topic-body">
+              <h3 class="topic-title">CRISPR, 질병을 편집하다</h3>
+              <p class="topic-desc">
+                유전자가위 기술로 유전 질환을 근본적으로 치료… 의료의 패러다임을 바꾸는 새로운 의학의 시대
+              </p>
+              <div class="topic-meta">
+                <span class="topic-meta-left">👥 2,891명 후원중</span>
+                <a class="topic-link" href="#projects">자세히 보기 →</a>
+              </div>
+            </div>
+          </article>
+
+          <article class="topic-card">
+            <div class="topic-media media-3">
+              <span class="badge badge-orange">신재생에너지</span>
+              <span class="badge badge-teal badge-right">+96%</span>
+            </div>
+            <div class="topic-body">
+              <h3 class="topic-title">태양을 저장하는 기술</h3>
+              <p class="topic-desc">
+                차세대 배터리와 에너지 저장 기술로 24시간 태양광 발전이 가능해진다면?
+              </p>
+              <div class="topic-meta">
+                <span class="topic-meta-left">👥 3,542명 후원중</span>
+                <a class="topic-link" href="#projects">자세히 보기 →</a>
+              </div>
+            </div>
+          </article>
+
+          <article class="topic-card">
+            <div class="topic-media media-4">
+              <span class="badge badge-blue">뇌과학</span>
+              <span class="badge badge-teal badge-right">+180%</span>
+            </div>
+            <div class="topic-body">
+              <h3 class="topic-title">생각으로 기계를 움직이다</h3>
+              <p class="topic-desc">
+                뇌-컴퓨터 인터페이스 기술이 가져올 인간 능력의 확장
+              </p>
+              <div class="topic-meta">
+                <span class="topic-meta-left">👥 1,823명 후원중</span>
+                <a class="topic-link" href="#projects">자세히 보기 →</a>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="center">
+          <a class="btn btn-ghost" href="#projects">더 많은 주제 보기</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer" id="about">
+      <div class="container footer-inner">
+        <div>
+          <div class="brand small">
+            <div class="brand-mark">L</div>
+            <div class="brand-name">LabWave</div>
+          </div>
+          <p class="footer-text">
+            연구실의 팬이 되는 가장 쉬운 방법. 과학의 가치를 연결합니다.
+          </p>
+        </div>
+
+        <div class="footer-links">
+          <a href="#about">소개</a>
+          <a href="#labs">연구실</a>
+          <a href="#projects">프로젝트</a>
+          <a href="#login">문의</a>
+        </div>
+      </div>
+    </footer>
+  </main>
+</body>
+</html>
