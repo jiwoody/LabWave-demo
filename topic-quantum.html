@@ -76,7 +76,7 @@
       <section id="comments" class="comment-section">
         <div class="comment-head">
           <h2 class="comment-title">댓글</h2>
-          <p class="comment-sub">이 페이지에서 작성한 댓글은 데모용으로 이 브라우저에 저장됩니다.</p>
+          <p class="comment-sub">이 페이지의 댓글은 모든 방문자에게 공유됩니다. (데모: 로그인 없이 닉네임)</p>
         </div>
 
         <!-- 새 댓글 작성 -->
@@ -103,10 +103,20 @@
     </div>
   </main>
 
-  <script>
-    // ====== Demo Comment System (localStorage) ======
-    // 페이지별로 댓글을 분리 저장
-    const STORAGE_KEY = "labwave_comments_topic_quantum_v1";
+  <!-- ✅ Supabase 공유 댓글/대댓글 스크립트 -->
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    // ==========================
+    // 1) 여기 2줄만 네 값으로 교체
+    // ==========================
+    const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
+    const SUPABASE_KEY = "YOUR_PUBLISHABLE_KEY";
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // 페이지(글) 식별자: 다른 글은 slug만 바꾸면 댓글이 분리됨
+    const PAGE_SLUG = "topic-quantum";
 
     const $ = (sel) => document.querySelector(sel);
     const commentListEl = $("#commentList");
@@ -115,40 +125,14 @@
     const contentInput = $("#contentInput");
     const resetBtn = $("#resetBtn");
 
-    function nowISO() {
-      return new Date().toISOString();
-    }
-
-    function uid() {
-      return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
-    }
-
-    function loadComments() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? JSON.parse(raw) : [];
-      } catch {
-        return [];
-      }
-    }
-
-    function saveComments(comments) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(comments));
-    }
-
-    // 댓글 구조:
-    // { id, parentId: null|id, author, content, createdAt }
-    function addComment({ parentId = null, author, content }) {
-      const comments = loadComments();
-      comments.push({
-        id: uid(),
-        parentId,
-        author: author.trim(),
-        content: content.trim(),
-        createdAt: nowISO(),
-      });
-      saveComments(comments);
-      render();
+    // ===== 유틸 =====
+    function escapeHtml(str) {
+      return (str ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
     }
 
     function formatTime(iso) {
@@ -161,19 +145,56 @@
       return `${yy}.${mm}.${dd} ${hh}:${mi}`;
     }
 
-    function buildTree(comments) {
+    // ===== Supabase I/O =====
+    async function fetchComments() {
+      const { data, error } = await supabase
+        .from("comments")
+        .select("id,page_slug,parent_id,author,content,created_at")
+        .eq("page_slug", PAGE_SLUG)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        commentListEl.innerHTML = `<div class="comment-empty">댓글을 불러오지 못했어요: ${escapeHtml(error.message)}</div>`;
+        return [];
+      }
+      return data ?? [];
+    }
+
+    async function insertComment({ parent_id = null, author, content }) {
+      author = (author ?? "").trim().slice(0, 20);
+      content = (content ?? "").trim().slice(0, 300);
+
+      if (!author || !content) return;
+
+      const { error } = await supabase.from("comments").insert({
+        page_slug: PAGE_SLUG,
+        parent_id,
+        author,
+        content,
+      });
+
+      if (error) {
+        alert("등록 실패: " + error.message);
+        return;
+      }
+      await render();
+    }
+
+    // ===== 트리 구성 =====
+    function buildTree(rows) {
       const map = new Map();
-      comments.forEach(c => map.set(c.id, { ...c, children: [] }));
+      rows.forEach(r => map.set(r.id, { ...r, children: [] }));
+
       const roots = [];
       map.forEach(node => {
-        if (node.parentId && map.has(node.parentId)) {
-          map.get(node.parentId).children.push(node);
+        if (node.parent_id && map.has(node.parent_id)) {
+          map.get(node.parent_id).children.push(node);
         } else {
           roots.push(node);
         }
       });
-      // 시간순 정렬
-      const sortByTime = (a,b) => new Date(a.createdAt) - new Date(b.createdAt);
+
+      const sortByTime = (a,b) => new Date(a.created_at) - new Date(b.created_at);
       const deepSort = (nodes) => {
         nodes.sort(sortByTime);
         nodes.forEach(n => deepSort(n.children));
@@ -182,34 +203,13 @@
       return roots;
     }
 
-    function escapeHtml(str) {
-      return str
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-    }
-
-    function render() {
-      const comments = loadComments();
-      if (comments.length === 0) {
-        commentListEl.innerHTML = `<div class="comment-empty">아직 댓글이 없어요. 첫 댓글을 남겨보세요!</div>`;
-        return;
-      }
-
-      const tree = buildTree(comments);
-
+    // ===== 렌더 =====
+    function renderTree(tree) {
       function renderNode(node, depth) {
         const indentClass = depth === 0 ? "cmt" : "cmt cmt-reply";
         const safeAuthor = escapeHtml(node.author);
         const safeContent = escapeHtml(node.content).replaceAll("\n","<br/>");
-        const time = formatTime(node.createdAt);
-
-        const replyBoxId = `replyBox-${node.id}`;
-        const replyFormId = `replyForm-${node.id}`;
-        const replyAuthorId = `replyAuthor-${node.id}`;
-        const replyContentId = `replyContent-${node.id}`;
+        const time = formatTime(node.created_at);
 
         return `
           <div class="${indentClass}">
@@ -222,13 +222,13 @@
               <button class="cmt-btn" data-action="toggle-reply" data-id="${node.id}">답글</button>
             </div>
 
-            <div class="reply-box" id="${replyBoxId}" hidden>
-              <form class="reply-form" id="${replyFormId}" data-parent="${node.id}">
+            <div class="reply-box" id="replyBox-${node.id}" hidden>
+              <form class="reply-form" data-parent="${node.id}">
                 <div class="reply-row">
-                  <input class="input" id="${replyAuthorId}" maxlength="20" placeholder="닉네임" required />
+                  <input class="input" maxlength="20" placeholder="닉네임" required />
                 </div>
                 <div class="reply-row">
-                  <textarea class="textarea" id="${replyContentId}" maxlength="300" placeholder="대댓글 내용 (최대 300자)" required></textarea>
+                  <textarea class="textarea" maxlength="300" placeholder="대댓글 내용 (최대 300자)" required></textarea>
                 </div>
                 <div class="reply-actions">
                   <button class="btn btn-primary btn-sm" type="submit">대댓글 등록</button>
@@ -242,9 +242,22 @@
         `;
       }
 
-      commentListEl.innerHTML = tree.map(n => renderNode(n, 0)).join("");
+      return tree.map(n => renderNode(n, 0)).join("");
+    }
 
-      // 이벤트 연결(토글/취소)
+    async function render() {
+      commentListEl.innerHTML = `<div class="comment-empty">불러오는 중...</div>`;
+
+      const rows = await fetchComments();
+      if (!rows.length) {
+        commentListEl.innerHTML = `<div class="comment-empty">아직 댓글이 없어요. 첫 댓글을 남겨보세요!</div>`;
+        return;
+      }
+
+      const tree = buildTree(rows);
+      commentListEl.innerHTML = renderTree(tree);
+
+      // 답글 토글
       commentListEl.querySelectorAll("[data-action='toggle-reply']").forEach(btn => {
         btn.addEventListener("click", () => {
           const id = btn.dataset.id;
@@ -253,6 +266,7 @@
         });
       });
 
+      // 답글 취소
       commentListEl.querySelectorAll("[data-action='cancel-reply']").forEach(btn => {
         btn.addEventListener("click", () => {
           const id = btn.dataset.id;
@@ -261,23 +275,22 @@
         });
       });
 
-      // 대댓글 submit
+      // 대댓글 등록
       commentListEl.querySelectorAll(".reply-form").forEach(form => {
-        form.addEventListener("submit", (e) => {
+        form.addEventListener("submit", async (e) => {
           e.preventDefault();
-          const parentId = form.dataset.parent;
-          const a = form.querySelector("input").value.trim();
-          const c = form.querySelector("textarea").value.trim();
-          if (!a || !c) return;
-          addComment({ parentId, author: a, content: c });
+          const parent_id = form.dataset.parent;
+          const author = form.querySelector("input").value;
+          const content = form.querySelector("textarea").value;
+          await insertComment({ parent_id, author, content });
         });
       });
     }
 
     // 새 댓글 등록
-    newCommentForm.addEventListener("submit", (e) => {
+    newCommentForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      addComment({ author: authorInput.value, content: contentInput.value });
+      await insertComment({ author: authorInput.value, content: contentInput.value });
       authorInput.value = "";
       contentInput.value = "";
     });
