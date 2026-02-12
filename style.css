@@ -719,3 +719,32 @@ body.topic-page .stars{
 body.topic-page .stars2{
   animation-duration: 36s;
 }
+
+/* 후원 CTA 박스 */
+.donate-cta{
+  margin-top: 22px;
+  padding: 18px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.04);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.22);
+}
+
+.donate-title{
+  margin: 0;
+  font-size: 18px;
+}
+.donate-sub{
+  margin: 8px 0 0;
+  color: rgba(234,242,255,0.60);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+@media (max-width: 980px){
+  .donate-cta{ flex-direction:column; align-items:flex-start; }
+}
