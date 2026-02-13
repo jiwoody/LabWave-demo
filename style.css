@@ -748,3 +748,35 @@ body.topic-page .stars2{
 @media (max-width: 980px){
   .donate-cta{ flex-direction:column; align-items:flex-start; }
 }
+
+.action-dropdown{
+  position: relative;
+  display: inline-block;
+}
+
+.action-menu{
+  position: absolute;
+  top: 110%;
+  left: 0;
+  min-width: 160px;
+  background: rgba(10,25,40,0.95);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 12px;
+  padding: 6px;
+  display: none;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  z-index: 50;
+}
+
+.action-menu a{
+  padding: 10px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: rgba(234,242,255,0.92);
+}
+
+.action-menu a:hover{
+  background: rgba(47,211,231,0.12);
+}
+
