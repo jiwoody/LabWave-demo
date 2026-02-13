@@ -504,6 +504,30 @@
 
   // 최초 렌더
   render();
+
+  // ===== 연구 카드: "연구 보기" 버튼 드롭다운 =====
+document.querySelectorAll(".action-toggle").forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+
+    const dropdown = btn.closest(".action-dropdown");
+    const menu = dropdown.querySelector(".action-menu");
+
+    // 다른 메뉴 닫기
+    document.querySelectorAll(".action-menu").forEach((m) => {
+      if (m !== menu) m.style.display = "none";
+    });
+
+    menu.style.display = (menu.style.display === "flex") ? "none" : "flex";
+    if (menu.style.display === "flex") menu.style.flexDirection = "column";
+  });
+});
+
+// 바깥 클릭 시 모두 닫기
+document.addEventListener("click", () => {
+  document.querySelectorAll(".action-menu").forEach((m) => (m.style.display = "none"));
+});
+
 </script>
 </body>
 </html>
