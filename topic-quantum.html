@@ -95,13 +95,7 @@
         </div>
 
         <div class="center">
-          <div class="action-dropdown">
-            <button class="btn btn-primary btn-sm action-toggle" type="button">연구 보기</button>
-            <div class="action-menu">
-              <a href="research-qec.html">자세히보기</a>
-              <a href="donate.html?research=qec">후원하기</a>
-            </div>
-          </div>
+          <a class="btn btn-primary btn-sm" href="research-qec.html">연구 보기</a>
         </div>
       </div>
     </div>
@@ -120,13 +114,7 @@
         </div>
 
         <div class="center">
-          <div class="action-dropdown">
-            <button class="btn btn-primary btn-sm action-toggle" type="button">연구 보기</button>
-            <div class="action-menu">
-              <a href="research-drug.html">자세히보기</a>
-              <a href="donate.html?research=drug">후원하기</a>
-            </div>
-          </div>
+          <a class="btn btn-primary btn-sm" href="research-drug.html">연구 보기</a>
         </div>
       </div>
     </div>
@@ -145,13 +133,7 @@
         </div>
 
         <div class="center">
-          <div class="action-dropdown">
-            <button class="btn btn-primary btn-sm action-toggle" type="button">연구 보기</button>
-            <div class="action-menu">
-              <a href="research-battery.html">자세히보기</a>
-              <a href="donate.html?research=battery">후원하기</a>
-            </div>
-          </div>
+          <a class="btn btn-primary btn-sm" href="research-battery.html">연구보기</a>
         </div>
       </div>
     </div>
@@ -161,23 +143,15 @@
   <div id="donate" class="donate-cta">
     <div>
       <h3 class="donate-title">연구를 더 빠르게 전진시키는 후원</h3>
-      <p class="donate-sub">데모 버전에서는 버튼 클릭 시 “후원 페이지(예: donate.html)”로 이동하도록 연결됩니다.</p>
+      <p class="donate-sub">
+        더 넓은 분야의 연구들을 살펴보고 마음이 가는 토픽을 선택해 후원할 수 있어요.
+        LabWave는 "좋은 연구가 더 멀리 가는 연결"을 만들고자 합니다.
+      </p>
     </div>
     <a class="btn btn-primary" href="donate.html">후원 페이지로 이동</a>
   </div>
 </section>
-
-  <!-- 후원 CTA -->
-  <div id="donate" class="donate-cta">
-    <div>
-      <h3 class="donate-title">연구를 더 빠르게 전진시키는 후원</h3>
-      <p class="donate-sub">데모 버전에서는 버튼 클릭 시 “후원 페이지(예: donate.html)”로 이동하도록 연결됩니다.</p>
-    </div>
-    <a class="btn btn-primary" href="donate.html">후원 페이지로 이동</a>
-  </div>
-</section>
-
-      
+     
       <!-- 댓글/대댓글 -->
       <section id="comments" class="comment-section">
         <div class="comment-head">
@@ -519,10 +493,6 @@
   render();
 
   // ===== 연구 카드: "연구 보기" 버튼 드롭다운 =====
-document.querySelectorAll(".action-toggle").forEach((btn) => {
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-
     const dropdown = btn.closest(".action-dropdown");
     const menu = dropdown.querySelector(".action-menu");
 
@@ -534,11 +504,6 @@ document.querySelectorAll(".action-toggle").forEach((btn) => {
     menu.style.display = (menu.style.display === "flex") ? "none" : "flex";
     if (menu.style.display === "flex") menu.style.flexDirection = "column";
   });
-});
-
-// 바깥 클릭 시 모두 닫기
-document.addEventListener("click", () => {
-  document.querySelectorAll(".action-menu").forEach((m) => (m.style.display = "none"));
 });
 
 </script>
