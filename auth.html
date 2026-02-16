@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>로그인 | LabWave</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="topic-page">
+  <div class="bg" aria-hidden="true">
+    <div class="stars"></div>
+    <div class="stars stars2"></div>
+    <div class="glow"></div>
+  </div>
+
+  <header class="navbar">
+    <div class="container nav-inner">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">L</div>
+        <div class="brand-name">LabWave</div>
+      </a>
+      <div class="nav-actions">
+        <a class="btn btn-ghost btn-sm" href="index.html">← 홈</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="section">
+    <div class="container">
+      <div class="article-card" style="max-width:560px;margin:0 auto;">
+        <h1 style="margin-top:0;">로그인</h1>
+        <p style="color:rgba(234,242,255,0.7);margin-top:8px;">
+          로그인 후 댓글 작성/좋아요/삭제 기능을 사용할 수 있어요.
+          주의 : 데모버전입니다. 개인 정보가 드러나지 않도록 설정해주세요!
+        </p>
+
+        <form id="loginForm" style="margin-top:18px;display:grid;gap:12px;">
+          <div class="form-row">
+            <label class="label">이메일</label>
+            <input class="input" id="email" type="email" placeholder="you@example.com" required />
+          </div>
+          <div class="form-row">
+            <label class="label">비밀번호</label>
+            <input class="input" id="password" type="password" placeholder="••••••••" required />
+          </div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+            <button class="btn btn-primary" type="submit">로그인</button>
+            <button class="btn btn-ghost" type="button" id="signupBtn">회원가입</button>
+            <button class="btn btn-ghost" type="button" id="logoutBtn">로그아웃</button>
+          </div>
+        </form>
+
+        <div id="status" style="margin-top:14px;color:rgba(234,242,255,0.75);font-size:14px;"></div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const SUPABASE_URL = "https://gjmffchyvthiwwhlwyam.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_U3s5fUx3Bm8TMs70FJawVA_aoCw7GOO";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const $ = (s)=>document.querySelector(s);
+    const statusEl = $("#status");
+
+    function setStatus(msg){ statusEl.textContent = msg; }
+
+    async function refreshStatus(){
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setStatus(`로그인됨: ${user.email}`);
+      else setStatus("로그아웃 상태");
+    }
+
+    $("#loginForm").addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      const email = $("#email").value.trim();
+      const password = $("#password").value;
+
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) { setStatus("로그인 실패: " + error.message); return; }
+      setStatus("로그인 성공! 이제 댓글을 작성할 수 있어요.");
+      await refreshStatus();
+    });
+
+    $("#signupBtn").addEventListener("click", async ()=>{
+      const email = $("#email").value.trim();
+      const password = $("#password").value;
+
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) { setStatus("회원가입 실패: " + error.message); return; }
+      setStatus("회원가입 요청 완료! (이메일 확인이 필요할 수 있어요)");
+      await refreshStatus();
+    });
+
+    $("#logoutBtn").addEventListener("click", async ()=>{
+      await supabase.auth.signOut();
+      setStatus("로그아웃 완료");
+      await refreshStatus();
+    });
+
+    refreshStatus();
+  </script>
+</body>
+</html>
