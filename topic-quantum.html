@@ -464,7 +464,22 @@
         await render();
       });
     });
+async function guardWriteUI() {
+  const { data: { user } } = await supabase.auth.getUser();
+  const form = document.getElementById("newCommentForm");
+  const hint = document.querySelector(".comment-sub");
 
+  if (!user) {
+    // 폼 비활성화
+    form.querySelectorAll("input, textarea, button").forEach(el => el.disabled = true);
+    if (hint) hint.textContent = "댓글 작성/좋아요/삭제는 로그인 후 사용할 수 있어요.";
+  } else {
+    // 활성화
+    form.querySelectorAll("input, textarea, button").forEach(el => el.disabled = false);
+    if (hint) hint.textContent = "로그인 상태로 댓글을 작성할 수 있어요.";
+  }
+}
+    await guardWriteUI();
     render();
   </script>
 </body>
