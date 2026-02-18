@@ -189,6 +189,14 @@
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+    let currentUser = null;
+
+    async function loadUser() {
+    const { data } = await supabase.auth.getUser();
+    currentUser = data.user;
+    }
+
+
     const SUPABASE_URL = "https://gjmffchyvthiwwhlwyam.supabase.co";
     const SUPABASE_KEY = "sb_publishable_U3s5fUx3Bm8TMs70FJawVA_aoCw7GOO";
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -480,6 +488,8 @@ async function guardWriteUI() {
   }
 }
     await guardWriteUI();
+    
+    await loudUser();
     render();
   </script>
 </body>
