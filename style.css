@@ -837,5 +837,72 @@ body.topic-page .stars2{
   .donation-stats{ grid-template-columns: 1fr; }
 }
 
-
-
+/* ===== 프로필 모달 ===== */
+.modal[hidden]{ display:none; }
+.modal{
+  position:fixed;
+  inset:0;
+  z-index:999;
+}
+.modal-backdrop{
+  position:absolute;
+  inset:0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+}
+.modal-card{
+  position:relative;
+  width:min(560px, calc(100% - 32px));
+  margin: 90px auto 0;
+  background: rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.10);
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+  padding: 18px;
+}
+.modal-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.modal-title{
+  font-weight:900;
+  font-size:18px;
+}
+.modal-sub{
+  margin-top:4px;
+  font-size:13px;
+  opacity:.75;
+}
+.modal-section{
+  padding-top: 14px;
+}
+.modal-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top: 14px;
+}
+.profile-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(255,255,255,0.08);
+}
+.profile-label{
+  font-size:13px;
+  opacity:.75;
+}
+.profile-value{
+  font-size:13px;
+  opacity:.95;
+  text-align:right;
+  word-break: break-all;
+}
+.muted{ opacity:.75; font-size:13px; }
+.hint{ font-size:13px; opacity:.85; }
