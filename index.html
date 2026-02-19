@@ -7,6 +7,131 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const SUPABASE_URL = "https://gjmffchyvthiwwhlwyam.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_U3s5fUx3Bm8TMs70FJawVA_aoCw7GOO";
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // ===== DOM =====
+  const $ = (s) => document.querySelector(s);
+
+  const openBtn = $("#openProfileBtn");
+  const modal = $("#profileModal");
+  const closeBtn = $("#closeProfileBtn");
+
+  const profileSub = $("#profileSub");
+  const loggedOutBox = $("#profileLoggedOut");
+  const loggedInBox = $("#profileLoggedIn");
+
+  const profileEmail = $("#profileEmail");
+  const profileRole = $("#profileRole");
+  const nicknameInput = $("#nicknameInput");
+  const saveNicknameBtn = $("#saveNicknameBtn");
+  const nicknameMsg = $("#nicknameMsg");
+  const logoutBtn = $("#logoutBtn");
+
+  function openModal(){
+    modal.hidden = false;
+  }
+  function closeModal(){
+    modal.hidden = true;
+  }
+
+  modal?.addEventListener("click", (e) => {
+    if (e.target?.dataset?.close === "1") closeModal();
+  });
+  closeBtn?.addEventListener("click", closeModal);
+  openBtn?.addEventListener("click", async () => {
+    openModal();
+    await refreshProfileUI();
+  });
+
+  function validNickname(n) {
+    const nick = (n ?? "").trim();
+    if (nick.length < 2 || nick.length > 12) return false;
+    return /^[a-zA-Z0-9_가-힣]+$/.test(nick);
+  }
+
+  async function refreshProfileUI(){
+    nicknameMsg.textContent = "";
+    profileSub.textContent = "로그인 상태를 확인 중...";
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      loggedInBox.hidden = true;
+      loggedOutBox.hidden = false;
+      profileSub.textContent = "로그인이 필요해요.";
+      return;
+    }
+
+    // 로그인 상태
+    loggedOutBox.hidden = true;
+    loggedInBox.hidden = false;
+
+    profileEmail.textContent = user.email ?? "-";
+    profileSub.textContent = "닉네임을 설정하면 댓글에 표시돼요.";
+
+    // profiles에서 role/nickname 읽기
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("role, nickname")
+      .eq("id", user.id)
+      .single();
+
+    if (error) {
+      profileRole.textContent = "-";
+      nicknameInput.value = "";
+      nicknameMsg.textContent = "프로필을 불러오지 못했어요: " + error.message;
+      return;
+    }
+
+    profileRole.textContent = profile?.role ?? "supporter";
+    nicknameInput.value = profile?.nickname ?? "";
+  }
+
+  saveNicknameBtn?.addEventListener("click", async () => {
+    nicknameMsg.textContent = "저장 중...";
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      nicknameMsg.textContent = "로그인 후 설정할 수 있어요.";
+      return;
+    }
+
+    const nick = (nicknameInput.value ?? "").trim();
+    if (!validNickname(nick)) {
+      nicknameMsg.textContent = "닉네임은 2~12자, 한글/영문/숫자/_ 만 가능해요.";
+      return;
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ nickname: nick })
+      .eq("id", user.id);
+
+    if (error) {
+      nicknameMsg.textContent = "저장 실패: " + error.message; // 중복이면 여기서 뜸
+      return;
+    }
+
+    nicknameMsg.textContent = "저장 완료! 이제 댓글에 닉네임이 표시돼요.";
+  });
+
+  logoutBtn?.addEventListener("click", async () => {
+    await supabase.auth.signOut();
+    await refreshProfileUI();
+  });
+
+  // 로그인 상태 변하면 모달 UI도 갱신
+  supabase.auth.onAuthStateChange(() => {
+    if (!modal.hidden) refreshProfileUI();
+  });
+</script>
+
+
 <body>
   <!-- 배경(별/그라디언트) -->
   <div class="bg" aria-hidden="true">
@@ -288,5 +413,6 @@
   </main>
 </body>
 </html>
+
 
 
