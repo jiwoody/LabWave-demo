@@ -15,6 +15,55 @@
     <div class="glow"></div>
   </div>
 
+  <!-- 프로필 모달 -->
+<div class="modal" id="profileModal" hidden>
+  <div class="modal-backdrop" data-close="1"></div>
+
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">프로필</div>
+        <div class="modal-sub" id="profileSub">로그인 상태를 확인 중...</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="closeProfileBtn" type="button">닫기</button>
+    </div>
+
+    <!-- 비로그인 상태 -->
+    <div id="profileLoggedOut" class="modal-section" hidden>
+      <p class="muted">닉네임 설정과 댓글 작성은 로그인 후 사용할 수 있어요.</p>
+      <div class="modal-actions">
+        <a class="btn btn-primary" href="auth.html">로그인/회원가입</a>
+      </div>
+    </div>
+
+    <!-- 로그인 상태 -->
+    <div id="profileLoggedIn" class="modal-section" hidden>
+      <div class="profile-row">
+        <div class="profile-label">이메일</div>
+        <div class="profile-value" id="profileEmail">-</div>
+      </div>
+
+      <div class="profile-row">
+        <div class="profile-label">권한</div>
+        <div class="profile-value" id="profileRole">-</div>
+      </div>
+
+      <div class="profile-row" style="margin-top:14px;">
+        <div class="profile-label">닉네임</div>
+        <input class="input" id="nicknameInput" maxlength="12" placeholder="2~12자 (한글/영문/숫자/_)" />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="saveNicknameBtn" type="button">닉네임 저장</button>
+        <button class="btn btn-ghost" id="logoutBtn" type="button">로그아웃</button>
+      </div>
+
+      <div class="hint" id="nicknameMsg" style="margin-top:10px;"></div>
+    </div>
+  </div>
+</div>
+
+
   <!-- 상단바 -->
   <header class="navbar">
     <div class="container nav-inner">
@@ -31,6 +80,7 @@
       </nav>
 
       <div class="nav-actions">
+        <button class="btn btn-ghost btn-sm" id="openProfileBtn" type="button">프로필</button>
         <a class="nav-link subtle" href="#login">로그인</a>
         <a class="btn btn-primary btn-sm" href="#join">후원하기</a>
       </div>
@@ -238,4 +288,5 @@
   </main>
 </body>
 </html>
+
 
