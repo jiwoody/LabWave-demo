@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>프로필(닉네임 설정) | LabWave</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="topic-page">
+  <!-- 배경(별/그라디언트) -->
+  <div class="bg" aria-hidden="true">
+    <div class="stars"></div>
+    <div class="stars stars2"></div>
+    <div class="glow"></div>
+  </div>
+
+  <!-- 상단바 -->
+  <header class="navbar">
+    <div class="container nav-inner">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">L</div>
+        <div class="brand-name">LabWave</div>
+      </a>
+
+      <div class="nav-actions">
+        <a class="btn btn-ghost btn-sm" href="index.html">홈</a>
+        <button class="btn btn-ghost btn-sm" id="logoutBtn" type="button">로그아웃</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="section">
+    <div class="container">
+
+      <div class="article-head">
+        <span class="section-pill">Profile</span>
+        <h1 class="article-title">닉네임 설정</h1>
+        <p class="article-sub">
+          댓글/커뮤니티 활동에 표시될 닉네임을 설정해요.
+        </p>
+        <div class="article-meta">
+          <span id="userEmail">로그인 확인 중...</span>
+        </div>
+      </div>
+
+      <article class="article-card" style="max-width: 720px; margin: 0 auto;">
+        <h2 style="margin-top:0;">내 닉네임</h2>
+
+        <div class="comment-form" style="margin-top: 14px;">
+          <div class="form-row">
+            <label class="label">닉네임 (2~12자)</label>
+            <input id="nicknameInput" class="input" maxlength="12" placeholder="예) jiwoody" />
+            <div style="margin-top:8px; color: rgba(234,242,255,0.55); font-size:12px; line-height:1.5;">
+              - 중복 닉네임은 저장되지 않아요<br/>
+              - 추천: 영문/숫자/언더바 조합
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" id="saveBtn" type="button">저장</button>
+            <a class="btn btn-ghost" href="index.html">취소</a>
+          </div>
+
+          <div id="status" style="margin-top:12px; color: rgba(234,242,255,0.75); font-size:13px;"></div>
+        </div>
+
+        <div style="margin-top: 18px;">
+          <a class="btn btn-ghost btn-sm" href="topic-quantum.html#comments">댓글로 돌아가기</a>
+        </div>
+      </article>
+
+    </div>
+  </main>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const SUPABASE_URL = "https://gjmffchyvthiwwhlwyam.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_U3s5fUx3Bm8TMs70FJawVA_aoCw7GOO";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const $ = (sel) => document.querySelector(sel);
+    const userEmailEl = $("#userEmail");
+    const nicknameInput = $("#nicknameInput");
+    const saveBtn = $("#saveBtn");
+    const logoutBtn = $("#logoutBtn");
+    const statusEl = $("#status");
+
+    function setStatus(msg) {
+      statusEl.textContent = msg;
+    }
+
+    function normalizeNickname(v) {
+      return (v ?? "").trim();
+    }
+
+    async function requireLogin() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        // 로그인 페이지로 이동
+        location.href = "auth.html";
+        return null;
+      }
+      return user;
+    }
+
+    async function loadMyProfile(user) {
+      userEmailEl.textContent = user.email || "로그인됨";
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("nickname, role")
+        .eq("id", user.id)
+        .single();
+
+      if (error) {
+        setStatus("프로필을 불러오지 못했어요: " + error.message);
+        return;
+      }
+
+      nicknameInput.value = data?.nickname ?? "";
+      setStatus(data?.nickname ? "현재 닉네임이 설정되어 있어요." : "아직 닉네임이 없어요. 설정해볼까요?");
+    }
+
+    async function saveNickname(user) {
+      const nickname = normalizeNickname(nicknameInput.value);
+
+      if (nickname.length < 2 || nickname.length > 12) {
+        setStatus("닉네임은 2~12자로 입력해줘!");
+        return;
+      }
+
+      setStatus("저장 중...");
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({ nickname })
+        .eq("id", user.id);
+
+      if (error) {
+        // unique 충돌이면 보통 이렇게 뜸
+        setStatus("저장 실패: " + error.message);
+        return;
+      }
+
+      setStatus("저장 완료! 이제 댓글에 닉네임이 표시돼요.");
+    }
+
+    async function logout() {
+      await supabase.auth.signOut();
+      location.href = "index.html";
+    }
+
+    // init
+    const user = await requireLogin();
+    if (user) {
+      await loadMyProfile(user);
+    }
+
+    saveBtn.addEventListener("click", async () => {
+      const u = await requireLogin();
+      if (!u) return;
+      await saveNickname(u);
+    });
+
+    logoutBtn.addEventListener("click", logout);
+  </script>
+</body>
+</html>
