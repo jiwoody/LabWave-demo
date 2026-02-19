@@ -24,6 +24,7 @@
       </a>
 
       <div class="nav-actions">
+        <a class="btn btn-ghost btn-sm" href="profile.html">프로필</a>
         <a class="btn btn-ghost btn-sm" href="auth.html">로그인</a>
         <a class="btn btn-ghost btn-sm" href="index.html#content">← 돌아가기</a>
       </div>
@@ -82,7 +83,6 @@
         </div>
 
         <div class="topic-grid">
-          <!-- 카드 1 -->
           <div class="topic-card">
             <div class="topic-body">
               <h3 class="topic-title">양자 오류 보정(QEC) 소형화</h3>
@@ -99,7 +99,6 @@
             </div>
           </div>
 
-          <!-- 카드 2 -->
           <div class="topic-card">
             <div class="topic-body">
               <h3 class="topic-title">신약 후보 분자 시뮬레이션</h3>
@@ -116,7 +115,6 @@
             </div>
           </div>
 
-          <!-- 카드 3 -->
           <div class="topic-card">
             <div class="topic-body">
               <h3 class="topic-title">차세대 배터리 소재 탐색</h3>
@@ -134,7 +132,6 @@
           </div>
         </div>
 
-        <!-- 후원 CTA: 1개만 유지 -->
         <div id="donate" class="donate-cta">
           <div>
             <h3 class="donate-title">연구를 더 빠르게 전진시키는 후원</h3>
@@ -148,364 +145,380 @@
       </section>
 
       <!-- 댓글/대댓글 -->
-<section id="comments" class="comment-section">
-  <div class="comment-head">
-    <h2 class="comment-title">댓글</h2>
-    <p class="comment-sub">댓글 작성/좋아요/삭제는 로그인 후 사용할 수 있어요.</p>
-  </div>
-
-  <!-- 새 댓글 작성 (닉네임 입력 제거) -->
-  <form id="newCommentForm" class="comment-form">
-    <div class="form-row">
-      <label class="label">내용</label>
-      <textarea id="contentInput" class="textarea" maxlength="300" placeholder="의견을 남겨주세요 (최대 300자)" required></textarea>
-    </div>
-
-    <div class="form-actions">
-      <button class="btn btn-primary" type="submit">댓글 등록</button>
-      <button class="btn btn-ghost" type="button" id="resetBtn">초기화</button>
-    </div>
-  </form>
-
-  <!-- 정렬 -->
-  <div class="comment-toolbar">
-    <button class="btn btn-ghost btn-sm" type="button" data-sort="newest">최신순</button>
-    <button class="btn btn-ghost btn-sm" type="button" data-sort="oldest">오래된순</button>
-    <button class="btn btn-ghost btn-sm" type="button" data-sort="likes">좋아요순</button>
-  </div>
-
-  <!-- 댓글 리스트 -->
-  <div id="commentList" class="comment-list"></div>
-</section>
-
-</div>
-</main>
-
-<script type="module">
-  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-  // ✅ 1) Supabase 먼저 생성
-  const SUPABASE_URL = "https://gjmffchyvthiwwhlwyam.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_U3s5fUx3Bm8TMs70FJawVA_aoCw7GOO";
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-  const PAGE_SLUG = "topic-quantum";
-  const LIKE_STORE_KEY = `labwave_likes_${PAGE_SLUG}`;
-
-  const $ = (sel) => document.querySelector(sel);
-  const commentListEl = $("#commentList");
-  const newCommentForm = $("#newCommentForm");
-  const contentInput = $("#contentInput");
-  const resetBtn = $("#resetBtn");
-
-  let currentUser = null;
-  let currentSort = "newest"; // newest | oldest | likes
-
-  // ===== 유틸 =====
-  function escapeHtml(str) {
-    return (str ?? "")
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
-  }
-
-  function formatTime(iso) {
-    const d = new Date(iso);
-    const yy = String(d.getFullYear()).slice(2);
-    const mm = String(d.getMonth()+1).padStart(2,"0");
-    const dd = String(d.getDate()).padStart(2,"0");
-    const hh = String(d.getHours()).padStart(2,"0");
-    const mi = String(d.getMinutes()).padStart(2,"0");
-    return `${yy}.${mm}.${dd} ${hh}:${mi}`;
-  }
-
-  function getLikedSet() {
-    try {
-      const raw = localStorage.getItem(LIKE_STORE_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      return new Set(Array.isArray(arr) ? arr : []);
-    } catch {
-      return new Set();
-    }
-  }
-
-  function saveLikedSet(set) {
-    localStorage.setItem(LIKE_STORE_KEY, JSON.stringify([...set]));
-  }
-
-  async function loadUser() {
-    const { data } = await supabase.auth.getUser();
-    currentUser = data.user;
-  }
-
-  function getAuthorFromUser() {
-    // ✅ 메타데이터 nickname이 있으면 그걸 쓰고, 없으면 이메일
-    return (
-      currentUser?.user_metadata?.nickname ||
-      currentUser?.email ||
-      "user"
-    );
-  }
-
-  // ===== DB I/O =====
-  async function fetchComments() {
-    let q = supabase
-      .from("comments")
-      .select("id,page_slug,parent_id,author,content,created_at,likes,is_deleted")
-      .eq("page_slug", PAGE_SLUG)
-      .eq("is_deleted", false);
-
-    if (currentSort === "likes") {
-      q = q.order("likes", { ascending: false }).order("created_at", { ascending: false });
-    } else if (currentSort === "oldest") {
-      q = q.order("created_at", { ascending: true });
-    } else {
-      q = q.order("created_at", { ascending: false });
-    }
-
-    const { data, error } = await q;
-    if (error) {
-      commentListEl.innerHTML = `<div class="comment-empty">댓글을 불러오지 못했어요: ${escapeHtml(error.message)}</div>`;
-      return [];
-    }
-    return data ?? [];
-  }
-
-  async function insertComment({ parent_id = null, content }) {
-    const author = getAuthorFromUser();
-    content = (content ?? "").trim().slice(0, 300);
-    if (!author || !content) return;
-
-    const { error } = await supabase.from("comments").insert({
-      page_slug: PAGE_SLUG,
-      parent_id,
-      author,
-      content,
-      likes: 0,
-      is_deleted: false,
-    });
-
-    if (error) {
-      alert("등록 실패: " + error.message);
-      return;
-    }
-    await render();
-  }
-
-  async function likeOnce(commentId) {
-    if (!currentUser) {
-      alert("로그인 후 이용 가능합니다.");
-      return;
-    }
-
-    const liked = getLikedSet();
-    if (liked.has(commentId)) {
-      alert("이미 좋아요를 눌렀어요!");
-      return;
-    }
-    liked.add(commentId);
-    saveLikedSet(liked);
-
-    const { error } = await supabase.rpc("increment_like", { cid: commentId });
-    if (error) {
-      liked.delete(commentId);
-      saveLikedSet(liked);
-      alert("좋아요 실패: " + error.message);
-      return;
-    }
-    await render();
-  }
-
-  async function softDelete(commentId) {
-    if (!currentUser) {
-      alert("로그인 후 이용 가능합니다.");
-      return;
-    }
-
-    const ok = confirm("이 댓글을 삭제(숨김)할까요?");
-    if (!ok) return;
-
-    const { error } = await supabase.rpc("soft_delete_comment", { cid: commentId });
-    if (error) {
-      alert("삭제 실패: " + error.message);
-      return;
-    }
-    await render();
-  }
-
-  // ===== 트리 구성 =====
-  function buildTree(rows) {
-    const map = new Map();
-    rows.forEach(r => map.set(r.id, { ...r, children: [] }));
-
-    const roots = [];
-    map.forEach(node => {
-      if (node.parent_id && map.has(node.parent_id)) map.get(node.parent_id).children.push(node);
-      else roots.push(node);
-    });
-
-    const sortByTimeAsc = (a,b) => new Date(a.created_at) - new Date(b.created_at);
-    const deepSort = (nodes) => {
-      nodes.sort(sortByTimeAsc);
-      nodes.forEach(n => deepSort(n.children));
-    };
-    deepSort(roots);
-
-    const sortRoot = (a,b) => {
-      if (currentSort === "likes") {
-        if ((b.likes ?? 0) !== (a.likes ?? 0)) return (b.likes ?? 0) - (a.likes ?? 0);
-        return new Date(b.created_at) - new Date(a.created_at);
-      }
-      if (currentSort === "oldest") return new Date(a.created_at) - new Date(b.created_at);
-      return new Date(b.created_at) - new Date(a.created_at);
-    };
-    roots.sort(sortRoot);
-
-    return roots;
-  }
-
-  // ===== 렌더 =====
-  function renderTree(tree, likedSet) {
-    function renderNode(node, depth) {
-      const indentClass = depth === 0 ? "cmt" : "cmt cmt-reply";
-      const safeAuthor = escapeHtml(node.author);
-      const safeContent = escapeHtml(node.content).replaceAll("\n","<br/>");
-      const time = formatTime(node.created_at);
-      const likes = node.likes ?? 0;
-      const liked = likedSet.has(node.id);
-
-      return `
-        <div class="${indentClass}">
-          <div class="cmt-top">
-            <div class="cmt-author">${safeAuthor}</div>
-            <div class="cmt-time">${time}</div>
-          </div>
-
-          <div class="cmt-content">${safeContent}</div>
-
-          <div class="cmt-actions">
-            <button class="cmt-btn" data-action="like" data-id="${node.id}" ${liked ? "data-liked='1'" : ""}>
-              👍 ${likes}${liked ? " (완료)" : ""}
-            </button>
-            <button class="cmt-btn" data-action="toggle-reply" data-id="${node.id}">답글</button>
-            <button class="cmt-btn" data-action="delete" data-id="${node.id}">삭제</button>
-          </div>
-
-          <div class="reply-box" id="replyBox-${node.id}" hidden>
-            <form class="reply-form" data-parent="${node.id}">
-              <div class="reply-row">
-                <textarea class="textarea" maxlength="300" placeholder="대댓글 내용 (최대 300자)" required></textarea>
-              </div>
-              <div class="reply-actions">
-                <button class="btn btn-primary btn-sm" type="submit">대댓글 등록</button>
-                <button class="btn btn-ghost btn-sm" type="button" data-action="cancel-reply" data-id="${node.id}">취소</button>
-              </div>
-            </form>
-          </div>
-
-          ${node.children.map(ch => renderNode(ch, depth+1)).join("")}
+      <section id="comments" class="comment-section">
+        <div class="comment-head">
+          <h2 class="comment-title">댓글</h2>
+          <p class="comment-sub" id="commentHint">댓글 작성/좋아요/삭제는 로그인 후 사용할 수 있어요.</p>
         </div>
-      `;
+
+        <!-- 새 댓글 작성 -->
+        <form id="newCommentForm" class="comment-form">
+          <div class="form-row">
+            <label class="label">내용</label>
+            <textarea id="contentInput" class="textarea" maxlength="300" placeholder="의견을 남겨주세요 (최대 300자)" required></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">댓글 등록</button>
+            <button class="btn btn-ghost" type="button" id="resetBtn">초기화</button>
+          </div>
+        </form>
+
+        <!-- 정렬 -->
+        <div class="comment-toolbar">
+          <button class="btn btn-ghost btn-sm" type="button" data-sort="newest">최신순</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-sort="oldest">오래된순</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-sort="likes">좋아요순</button>
+        </div>
+
+        <!-- 댓글 리스트 -->
+        <div id="commentList" class="comment-list"></div>
+      </section>
+
+    </div>
+  </main>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const SUPABASE_URL = "https://gjmffchyvthiwwhlwyam.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_U3s5fUx3Bm8TMs70FJawVA_aoCw7GOO";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const PAGE_SLUG = "topic-quantum";
+    const LIKE_STORE_KEY = `labwave_likes_${PAGE_SLUG}`;
+
+    const $ = (sel) => document.querySelector(sel);
+    const commentListEl = $("#commentList");
+    const newCommentForm = $("#newCommentForm");
+    const contentInput = $("#contentInput");
+    const resetBtn = $("#resetBtn");
+    const hintEl = $("#commentHint");
+
+    let currentUser = null;
+    let currentSort = "newest";
+
+    function escapeHtml(str) {
+      return (str ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
     }
 
-    return tree.map(n => renderNode(n, 0)).join("");
-  }
+    function formatTime(iso) {
+      const d = new Date(iso);
+      const yy = String(d.getFullYear()).slice(2);
+      const mm = String(d.getMonth()+1).padStart(2,"0");
+      const dd = String(d.getDate()).padStart(2,"0");
+      const hh = String(d.getHours()).padStart(2,"0");
+      const mi = String(d.getMinutes()).padStart(2,"0");
+      return `${yy}.${mm}.${dd} ${hh}:${mi}`;
+    }
 
-  async function render() {
-    await loadUser();
+    function getLikedSet() {
+      try {
+        const raw = localStorage.getItem(LIKE_STORE_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        return new Set(Array.isArray(arr) ? arr : []);
+      } catch {
+        return new Set();
+      }
+    }
 
-    // ✅ 로그인 가드: 비로그인 = 작성폼/정렬 숨김 + 안내
-    const toolbar = document.querySelector(".comment-toolbar");
-    if (!currentUser) {
-      newCommentForm.style.display = "none";
-      if (toolbar) toolbar.style.display = "none";
-      commentListEl.innerHTML = `<div class="comment-empty">댓글을 보려면 먼저 로그인해줘!</div>`;
-      return;
-    } else {
+    function saveLikedSet(set) {
+      localStorage.setItem(LIKE_STORE_KEY, JSON.stringify([...set]));
+    }
+
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      currentUser = user ?? null;
+    }
+
+    async function getNicknameFromProfile() {
+      if (!currentUser?.id) return null;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("nickname")
+        .eq("id", currentUser.id)
+        .single();
+
+      if (error) return null;
+      return data?.nickname ?? null;
+    }
+
+    async function fetchComments() {
+      let q = supabase
+        .from("comments")
+        .select("id,page_slug,parent_id,author,content,created_at,likes,is_deleted")
+        .eq("page_slug", PAGE_SLUG)
+        .eq("is_deleted", false);
+
+      if (currentSort === "likes") {
+        q = q.order("likes", { ascending: false }).order("created_at", { ascending: false });
+      } else if (currentSort === "oldest") {
+        q = q.order("created_at", { ascending: true });
+      } else {
+        q = q.order("created_at", { ascending: false });
+      }
+
+      const { data, error } = await q;
+      if (error) {
+        commentListEl.innerHTML = `<div class="comment-empty">댓글을 불러오지 못했어요: ${escapeHtml(error.message)}</div>`;
+        return [];
+      }
+      return data ?? [];
+    }
+
+    async function insertComment({ parent_id = null, content }) {
+      const nickname = await getNicknameFromProfile();
+      const author = nickname || currentUser?.email || "user";
+
+      content = (content ?? "").trim().slice(0, 300);
+      if (!author || !content) return;
+
+      const { error } = await supabase.from("comments").insert({
+        page_slug: PAGE_SLUG,
+        parent_id,
+        author,
+        content,
+        likes: 0,
+        is_deleted: false,
+      });
+
+      if (error) {
+        alert("등록 실패: " + error.message);
+        return;
+      }
+      await render();
+    }
+
+    async function likeOnce(commentId) {
+      if (!currentUser) {
+        alert("로그인 후 이용 가능합니다.");
+        return;
+      }
+
+      const liked = getLikedSet();
+      if (liked.has(commentId)) {
+        alert("이미 좋아요를 눌렀어요!");
+        return;
+      }
+      liked.add(commentId);
+      saveLikedSet(liked);
+
+      const { error } = await supabase.rpc("increment_like", { cid: commentId });
+      if (error) {
+        liked.delete(commentId);
+        saveLikedSet(liked);
+        alert("좋아요 실패: " + error.message);
+        return;
+      }
+      await render();
+    }
+
+    async function softDelete(commentId) {
+      if (!currentUser) {
+        alert("로그인 후 이용 가능합니다.");
+        return;
+      }
+      const ok = confirm("이 댓글을 삭제(숨김)할까요?");
+      if (!ok) return;
+
+      const { error } = await supabase.rpc("soft_delete_comment", { cid: commentId });
+      if (error) {
+        alert("삭제 실패: " + error.message);
+        return;
+      }
+      await render();
+    }
+
+    function buildTree(rows) {
+      const map = new Map();
+      rows.forEach(r => map.set(r.id, { ...r, children: [] }));
+
+      const roots = [];
+      map.forEach(node => {
+        if (node.parent_id && map.has(node.parent_id)) map.get(node.parent_id).children.push(node);
+        else roots.push(node);
+      });
+
+      const sortByTimeAsc = (a,b) => new Date(a.created_at) - new Date(b.created_at);
+      const deepSort = (nodes) => {
+        nodes.sort(sortByTimeAsc);
+        nodes.forEach(n => deepSort(n.children));
+      };
+      deepSort(roots);
+
+      const sortRoot = (a,b) => {
+        if (currentSort === "likes") {
+          if ((b.likes ?? 0) !== (a.likes ?? 0)) return (b.likes ?? 0) - (a.likes ?? 0);
+          return new Date(b.created_at) - new Date(a.created_at);
+        }
+        if (currentSort === "oldest") return new Date(a.created_at) - new Date(b.created_at);
+        return new Date(b.created_at) - new Date(a.created_at);
+      };
+      roots.sort(sortRoot);
+
+      return roots;
+    }
+
+    function renderTree(tree, likedSet) {
+      function renderNode(node, depth) {
+        const indentClass = depth === 0 ? "cmt" : "cmt cmt-reply";
+        const safeAuthor = escapeHtml(node.author);
+        const safeContent = escapeHtml(node.content).replaceAll("\n","<br/>");
+        const time = formatTime(node.created_at);
+        const likes = node.likes ?? 0;
+        const liked = likedSet.has(node.id);
+
+        return `
+          <div class="${indentClass}">
+            <div class="cmt-top">
+              <div class="cmt-author">${safeAuthor}</div>
+              <div class="cmt-time">${time}</div>
+            </div>
+
+            <div class="cmt-content">${safeContent}</div>
+
+            <div class="cmt-actions">
+              <button class="cmt-btn" data-action="like" data-id="${node.id}" ${liked ? "data-liked='1'" : ""}>
+                👍 ${likes}${liked ? " (완료)" : ""}
+              </button>
+              <button class="cmt-btn" data-action="toggle-reply" data-id="${node.id}">답글</button>
+              <button class="cmt-btn" data-action="delete" data-id="${node.id}">삭제</button>
+            </div>
+
+            <div class="reply-box" id="replyBox-${node.id}" hidden>
+              <form class="reply-form" data-parent="${node.id}">
+                <div class="reply-row">
+                  <textarea class="textarea" maxlength="300" placeholder="대댓글 내용 (최대 300자)" required></textarea>
+                </div>
+                <div class="reply-actions">
+                  <button class="btn btn-primary btn-sm" type="submit">대댓글 등록</button>
+                  <button class="btn btn-ghost btn-sm" type="button" data-action="cancel-reply" data-id="${node.id}">취소</button>
+                </div>
+              </form>
+            </div>
+
+            ${node.children.map(ch => renderNode(ch, depth+1)).join("")}
+          </div>
+        `;
+      }
+      return tree.map(n => renderNode(n, 0)).join("");
+    }
+
+    async function render() {
+      await loadUser();
+
+      const toolbar = document.querySelector(".comment-toolbar");
+
+      // 비로그인: 작성/정렬 숨김, 안내
+      if (!currentUser) {
+        newCommentForm.style.display = "none";
+        if (toolbar) toolbar.style.display = "none";
+        commentListEl.innerHTML = `<div class="comment-empty">댓글을 보려면 먼저 로그인해줘!</div>`;
+        hintEl.textContent = "댓글 작성/좋아요/삭제는 로그인 후 사용할 수 있어요.";
+        return;
+      }
+
+      // 로그인했지만 닉네임 없음: 작성 막고 profile로 유도
+      const nickname = await getNicknameFromProfile();
+      if (!nickname) {
+        newCommentForm.style.display = "none";
+        if (toolbar) toolbar.style.display = "none";
+        hintEl.textContent = "댓글을 쓰려면 먼저 닉네임을 설정해줘!";
+        commentListEl.innerHTML = `
+          <div class="comment-empty">
+            닉네임이 아직 없어요.<br/><br/>
+            <a class="btn btn-primary btn-sm" href="profile.html">닉네임 설정하러 가기</a>
+          </div>
+        `;
+        return;
+      }
+
+      // 로그인 + 닉네임 있음
       newCommentForm.style.display = "block";
       if (toolbar) toolbar.style.display = "flex";
+      hintEl.textContent = `로그인됨 · 닉네임: ${nickname}`;
+
+      commentListEl.innerHTML = `<div class="comment-empty">불러오는 중...</div>`;
+
+      const likedSet = getLikedSet();
+      const rows = await fetchComments();
+
+      if (!rows.length) {
+        commentListEl.innerHTML = `<div class="comment-empty">아직 댓글이 없어요. 첫 댓글을 남겨보세요!</div>`;
+        return;
+      }
+
+      const tree = buildTree(rows);
+      commentListEl.innerHTML = renderTree(tree, likedSet);
+
+      // 답글 토글
+      commentListEl.querySelectorAll("[data-action='toggle-reply']").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.id;
+          const box = document.getElementById(`replyBox-${id}`);
+          box.hidden = !box.hidden;
+        });
+      });
+
+      // 답글 취소
+      commentListEl.querySelectorAll("[data-action='cancel-reply']").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.id;
+          const box = document.getElementById(`replyBox-${id}`);
+          box.hidden = true;
+        });
+      });
+
+      // 대댓글 등록
+      commentListEl.querySelectorAll(".reply-form").forEach(form => {
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const parent_id = form.dataset.parent;
+          const content = form.querySelector("textarea").value;
+          await insertComment({ parent_id, content });
+        });
+      });
+
+      // 좋아요
+      commentListEl.querySelectorAll("[data-action='like']").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          await likeOnce(btn.dataset.id);
+        });
+      });
+
+      // 삭제
+      commentListEl.querySelectorAll("[data-action='delete']").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          await softDelete(btn.dataset.id);
+        });
+      });
     }
 
-    commentListEl.innerHTML = `<div class="comment-empty">불러오는 중...</div>`;
-
-    const likedSet = getLikedSet();
-    const rows = await fetchComments();
-
-    if (!rows.length) {
-      commentListEl.innerHTML = `<div class="comment-empty">아직 댓글이 없어요. 첫 댓글을 남겨보세요!</div>`;
-      return;
-    }
-
-    const tree = buildTree(rows);
-    commentListEl.innerHTML = renderTree(tree, likedSet);
-
-    // 답글 토글
-    commentListEl.querySelectorAll("[data-action='toggle-reply']").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const id = btn.dataset.id;
-        const box = document.getElementById(`replyBox-${id}`);
-        box.hidden = !box.hidden;
-      });
+    newCommentForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      await insertComment({ content: contentInput.value });
+      contentInput.value = "";
     });
 
-    // 답글 취소
-    commentListEl.querySelectorAll("[data-action='cancel-reply']").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const id = btn.dataset.id;
-        const box = document.getElementById(`replyBox-${id}`);
-        box.hidden = true;
-      });
+    resetBtn.addEventListener("click", () => {
+      contentInput.value = "";
+      contentInput.focus();
     });
 
-    // 대댓글 등록(닉네임 없음)
-    commentListEl.querySelectorAll(".reply-form").forEach(form => {
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const parent_id = form.dataset.parent;
-        const content = form.querySelector("textarea").value;
-        await insertComment({ parent_id, content });
-      });
-    });
-
-    // 좋아요
-    commentListEl.querySelectorAll("[data-action='like']").forEach(btn => {
+    document.querySelectorAll("[data-sort]").forEach(btn => {
       btn.addEventListener("click", async () => {
-        await likeOnce(btn.dataset.id);
+        currentSort = btn.dataset.sort;
+        await render();
       });
     });
 
-    // 삭제
-    commentListEl.querySelectorAll("[data-action='delete']").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        await softDelete(btn.dataset.id);
-      });
-    });
-  }
-
-  // 새 댓글 등록(닉네임 없음)
-  newCommentForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    await insertComment({ content: contentInput.value });
-    contentInput.value = "";
-  });
-
-  resetBtn.addEventListener("click", () => {
-    contentInput.value = "";
-    contentInput.focus();
-  });
-
-  // 정렬 버튼
-  document.querySelectorAll("[data-sort]").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      currentSort = btn.dataset.sort;
-      await render();
-    });
-  });
-
-  // 최초 렌더
-  render();
-</script>
+    render();
+  </script>
 </body>
 </html>
