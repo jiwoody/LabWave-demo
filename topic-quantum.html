@@ -265,7 +265,7 @@
     async function fetchComments() {
       let q = supabase
         .from("comments")
-        .select("id,page_slug,parent_id,author,content,created_at,likes,is_deleted")
+        .select("id,page_slug,parent_id,user_id,author,content,created_at,likes,is_deleted")
         .eq("page_slug", PAGE_SLUG)
         .eq("is_deleted", false);
 
@@ -418,7 +418,7 @@
                 👍 ${likes}${liked ? " (완료)" : ""}
               </button>
               <button class="cmt-btn" data-action="toggle-reply" data-id="${node.id}">답글</button>
-              ${(myRole === "operator")
+              ${(node.user_id === currentUser?.id || myRole === "operator")
                 ? `<button class="cmt-btn" data-action="delete" data-id="${node.id}">삭제</button>`
                 : ``}
                 
@@ -445,6 +445,17 @@
 
     async function render() {
       await loadUser();
+      let myRole = null;
+
+      async function loadMyRole() {
+        if (!currentUser) { myRole = null; return; }
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", currentUser.id)
+          .single();
+        myRole = error ? null : (data?.role ?? null);
+      }
       await loadRole();
 
       const toolbar = document.querySelector(".comment-toolbar");
