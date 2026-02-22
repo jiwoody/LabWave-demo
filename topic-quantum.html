@@ -285,6 +285,22 @@
       return data ?? [];
     }
 
+    let myRole = null;
+
+    async function loadRole() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("role, nickname")
+        .eq("id", user.id)
+        .single();
+
+      myRole = data?.role ?? null;
+      return myRole;
+    }
+
     async function insertComment({ parent_id = null, content }) {
       const nickname = await getNicknameFromProfile();
       const author = nickname || currentUser?.email || "user";
@@ -402,7 +418,10 @@
                 👍 ${likes}${liked ? " (완료)" : ""}
               </button>
               <button class="cmt-btn" data-action="toggle-reply" data-id="${node.id}">답글</button>
-              <button class="cmt-btn" data-action="delete" data-id="${node.id}">삭제</button>
+              ${(myRole === "operator")
+                ? `<button class="cmt-btn" data-action="delete" data-id="${node.id}">삭제</button>`
+                : ``}
+                
             </div>
 
             <div class="reply-box" id="replyBox-${node.id}" hidden>
@@ -426,6 +445,7 @@
 
     async function render() {
       await loadUser();
+      await loadRole();
 
       const toolbar = document.querySelector(".comment-toolbar");
 
