@@ -295,6 +295,7 @@
       const { error } = await supabase.from("comments").insert({
         page_slug: PAGE_SLUG,
         parent_id,
+        user_id: currentUser.id,
         author,
         content,
         likes: 0,
