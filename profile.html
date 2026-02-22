@@ -96,8 +96,8 @@
     // 허용: 영문/숫자/언더바 (원하면 한글 허용으로 바꿀 수 있음)
     function validateNickname(nickname) {
       if (nickname.length < 2 || nickname.length > 12) return "닉네임은 2~12자로 입력해줘!";
-      const ok = /^[a-zA-Z0-9_]+$/.test(nickname);
-      if (!ok) return "닉네임은 영문/숫자/언더바(_)만 사용 가능해!";
+      const ok = /^[가-힣a-zA-Z0-9_]+$/.test(nickname);
+      if (!ok) return "닉네임은 한글/영문/숫자/언더바(_)만 사용 가능합니다.";
       return null;
     }
 
