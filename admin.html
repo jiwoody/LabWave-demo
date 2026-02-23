@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>운영 - Researcher 신청 승인 | LabWave</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="topic-page">
+  <div class="bg" aria-hidden="true">
+    <div class="stars"></div>
+    <div class="stars stars2"></div>
+    <div class="glow"></div>
+  </div>
+
+  <header class="navbar">
+    <div class="container nav-inner">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">L</div>
+        <div class="brand-name">LabWave</div>
+      </a>
+      <div class="nav-actions">
+        <a class="btn btn-ghost btn-sm" href="profile.html">프로필</a>
+        <a class="btn btn-ghost btn-sm" href="index.html">홈</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="section">
+    <div class="container">
+      <div class="article-head">
+        <span class="section-pill">Operator</span>
+        <h1 class="article-title">Researcher 신청 승인</h1>
+        <p class="article-sub">pending 상태의 신청을 승인/거절할 수 있어요.</p>
+        <div class="article-meta" id="me">로그인 확인 중...</div>
+      </div>
+
+      <article class="article-card">
+        <h2 style="margin-top:0;">대기 중 신청</h2>
+        <div id="list" class="comment-list"></div>
+        <div id="status" style="margin-top:12px; color: rgba(234,242,255,0.75); font-size:13px;"></div>
+      </article>
+    </div>
+  </main>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const SUPABASE_URL = "https://gjmffchyvthiwwhlwyam.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_U3s5fUx3Bm8TMs70FJawVA_aoCw7GOO";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const $ = (s) => document.querySelector(s);
+    const meEl = $("#me");
+    const listEl = $("#list");
+    const statusEl = $("#status");
+
+    function setStatus(m){ statusEl.textContent = m; }
+    function esc(str){
+      return (str ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+    }
+
+    async function requireOperator(){
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { location.href = "auth.html"; return null; }
+
+      const { data, error } = await supabase.from("profiles").select("role,nickname").eq("id", user.id).single();
+      if (error) { setStatus("프로필 확인 실패: " + error.message); return null; }
+
+      meEl.textContent = `접속: ${data?.nickname ?? user.email} / role=${data?.role ?? "?"}`;
+      if (data?.role !== "operator") {
+        listEl.innerHTML = `<div class="comment-empty">운영자만 접근할 수 있어요.</div>`;
+        return null;
+      }
+      return user;
+    }
+
+    async function loadPending(){
+      listEl.innerHTML = `<div class="comment-empty">불러오는 중...</div>`;
+
+      const { data, error } = await supabase
+        .from("role_requests")
+        .select("id,user_id,requested_role,status,created_at")
+        .eq("status","pending")
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        listEl.innerHTML = `<div class="comment-empty">불러오기 실패: ${esc(error.message)}</div>`;
+        return;
+      }
+
+      if (!data?.length) {
+        listEl.innerHTML = `<div class="comment-empty">대기 중 신청이 없어요.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = data.map(r => `
+        <div class="cmt">
+          <div class="cmt-top">
+            <div class="cmt-author">user_id: ${esc(r.user_id)}</div>
+            <div class="cmt-time">${new Date(r.created_at).toLocaleString()}</div>
+          </div>
+          <div class="cmt-content">요청: ${esc(r.requested_role)} / 상태: ${esc(r.status)}</div>
+          <div class="cmt-actions">
+            <button class="cmt-btn" data-act="approve" data-id="${r.id}">승인</button>
+            <button class="cmt-btn" data-act="reject" data-id="${r.id}">거절</button>
+          </div>
+        </div>
+      `).join("");
+
+      listEl.querySelectorAll("[data-act='approve']").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          setStatus("승인 처리 중...");
+          const { error } = await supabase.rpc("approve_researcher_request", { req_id: btn.dataset.id });
+          if (error) { setStatus("승인 실패: " + error.message); return; }
+          setStatus("승인 완료!");
+          await loadPending();
+        });
+      });
+
+      listEl.querySelectorAll("[data-act='reject']").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          setStatus("거절 처리 중...");
+          const { error } = await supabase.rpc("reject_researcher_request", { req_id: btn.dataset.id });
+          if (error) { setStatus("거절 실패: " + error.message); return; }
+          setStatus("거절 완료!");
+          await loadPending();
+        });
+      });
+    }
+
+    const ok = await requireOperator();
+    if (ok) loadPending();
+  </script>
+</body>
+</html>
