@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>운영 - Researcher 신청 승인 | LabWave</title>
+  <title>운영자 승인 | LabWave</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body class="topic-page">
   <div class="bg" aria-hidden="true">
     <div class="stars"></div>
@@ -21,7 +22,7 @@
       </a>
       <div class="nav-actions">
         <a class="btn btn-ghost btn-sm" href="profile.html">프로필</a>
-        <a class="btn btn-ghost btn-sm" href="index.html">홈</a>
+        <button class="btn btn-ghost btn-sm" id="logoutBtn" type="button">로그아웃</button>
       </div>
     </div>
   </header>
@@ -29,16 +30,23 @@
   <main class="section">
     <div class="container">
       <div class="article-head">
-        <span class="section-pill">Operator</span>
-        <h1 class="article-title">Researcher 신청 승인</h1>
-        <p class="article-sub">pending 상태의 신청을 승인/거절할 수 있어요.</p>
-        <div class="article-meta" id="me">로그인 확인 중...</div>
+        <span class="section-pill">Admin</span>
+        <h1 class="article-title">Researcher 승인</h1>
+        <p class="article-sub">Researcher 권한 신청을 승인/거절합니다. (운영자만 접근)</p>
+        <div class="article-meta">
+          <span id="me">로그인 확인 중...</span>
+          <span id="role">role: -</span>
+        </div>
       </div>
 
-      <article class="article-card">
-        <h2 style="margin-top:0;">대기 중 신청</h2>
-        <div id="list" class="comment-list"></div>
-        <div id="status" style="margin-top:12px; color: rgba(234,242,255,0.75); font-size:13px;"></div>
+      <article class="article-card" style="max-width: 920px; margin: 0 auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <h2 style="margin:0;">대기 중 신청</h2>
+          <button class="btn btn-ghost btn-sm" id="refreshBtn" type="button">새로고침</button>
+        </div>
+
+        <div id="status" style="margin-top:10px; color: rgba(234,242,255,0.75); font-size:13px;"></div>
+        <div id="list" style="margin-top:14px;"></div>
       </article>
     </div>
   </main>
@@ -52,85 +60,142 @@
 
     const $ = (s) => document.querySelector(s);
     const meEl = $("#me");
-    const listEl = $("#list");
+    const roleEl = $("#role");
     const statusEl = $("#status");
+    const listEl = $("#list");
+    const refreshBtn = $("#refreshBtn");
+    const logoutBtn = $("#logoutBtn");
 
-    function setStatus(m){ statusEl.textContent = m; }
     function esc(str){
-      return (str ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+      return (str ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
     }
 
-    async function requireOperator(){
+    function setStatus(msg){ statusEl.textContent = msg; }
+
+    async function requireOperator() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { location.href = "auth.html"; return null; }
-
-      const { data, error } = await supabase.from("profiles").select("role,nickname").eq("id", user.id).single();
-      if (error) { setStatus("프로필 확인 실패: " + error.message); return null; }
-
-      meEl.textContent = `접속: ${data?.nickname ?? user.email} / role=${data?.role ?? "?"}`;
-      if (data?.role !== "operator") {
-        listEl.innerHTML = `<div class="comment-empty">운영자만 접근할 수 있어요.</div>`;
+      if (!user) {
+        location.href = "auth.html";
         return null;
       }
+
+      meEl.textContent = user.email || "로그인됨";
+
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (error) {
+        setStatus("프로필(role) 확인 실패: " + error.message);
+        return null;
+      }
+
+      roleEl.textContent = "role: " + (profile?.role ?? "-");
+
+      if (profile?.role !== "operator") {
+        setStatus("접근 불가: 운영자(operator)만 볼 수 있어요.");
+        listEl.innerHTML = "";
+        return null;
+      }
+
       return user;
     }
 
-    async function loadPending(){
-      listEl.innerHTML = `<div class="comment-empty">불러오는 중...</div>`;
+    async function loadPending() {
+      setStatus("불러오는 중...");
 
       const { data, error } = await supabase
         .from("role_requests")
-        .select("id,user_id,requested_role,status,created_at")
-        .eq("status","pending")
-        .order("created_at", { ascending: true });
+        .select("id,user_id,requested_role,status,message,created_at")
+        .eq("requested_role", "researcher")
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
 
       if (error) {
-        listEl.innerHTML = `<div class="comment-empty">불러오기 실패: ${esc(error.message)}</div>`;
+        setStatus("목록 로드 실패: " + error.message);
+        listEl.innerHTML = "";
         return;
       }
 
-      if (!data?.length) {
-        listEl.innerHTML = `<div class="comment-empty">대기 중 신청이 없어요.</div>`;
+      if (!data || data.length === 0) {
+        setStatus("대기 중 신청이 없어요.");
+        listEl.innerHTML = "";
         return;
       }
 
-      listEl.innerHTML = data.map(r => `
-        <div class="cmt">
-          <div class="cmt-top">
-            <div class="cmt-author">user_id: ${esc(r.user_id)}</div>
-            <div class="cmt-time">${new Date(r.created_at).toLocaleString()}</div>
-          </div>
-          <div class="cmt-content">요청: ${esc(r.requested_role)} / 상태: ${esc(r.status)}</div>
-          <div class="cmt-actions">
-            <button class="cmt-btn" data-act="approve" data-id="${r.id}">승인</button>
-            <button class="cmt-btn" data-act="reject" data-id="${r.id}">거절</button>
-          </div>
+      setStatus(`대기 ${data.length}건`);
+
+      listEl.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          ${data.map(row => `
+            <div class="cmt" style="padding:14px;">
+              <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
+                <div style="font-weight:700;">요청: ${esc(row.requested_role)}</div>
+                <div style="opacity:0.7; font-size:12px;">${esc(new Date(row.created_at).toLocaleString())}</div>
+              </div>
+              <div style="margin-top:8px; opacity:0.85; font-size:13px;">
+                user_id: <span style="opacity:0.9;">${esc(row.user_id)}</span>
+              </div>
+              ${row.message ? `<div style="margin-top:8px; opacity:0.8; font-size:13px;">메시지: ${esc(row.message)}</div>` : ""}
+
+              <div style="margin-top:12px; display:flex; gap:8px;">
+                <button class="btn btn-primary btn-sm" data-action="approve" data-id="${row.id}">승인</button>
+                <button class="btn btn-ghost btn-sm" data-action="reject" data-id="${row.id}">거절</button>
+              </div>
+            </div>
+          `).join("")}
         </div>
-      `).join("");
+      `;
 
-      listEl.querySelectorAll("[data-act='approve']").forEach(btn => {
+      listEl.querySelectorAll("[data-action='approve']").forEach(btn => {
         btn.addEventListener("click", async () => {
-          setStatus("승인 처리 중...");
-          const { error } = await supabase.rpc("approve_researcher_request", { req_id: btn.dataset.id });
-          if (error) { setStatus("승인 실패: " + error.message); return; }
-          setStatus("승인 완료!");
+          const id = btn.dataset.id;
+          const ok = confirm("승인할까요? (profiles.role이 researcher로 바뀝니다)");
+          if (!ok) return;
+
+          const { error } = await supabase.rpc("approve_researcher_request", { req_id: id });
+          if (error) {
+            alert("승인 실패: " + error.message);
+            return;
+          }
           await loadPending();
         });
       });
 
-      listEl.querySelectorAll("[data-act='reject']").forEach(btn => {
+      listEl.querySelectorAll("[data-action='reject']").forEach(btn => {
         btn.addEventListener("click", async () => {
-          setStatus("거절 처리 중...");
-          const { error } = await supabase.rpc("reject_researcher_request", { req_id: btn.dataset.id });
-          if (error) { setStatus("거절 실패: " + error.message); return; }
-          setStatus("거절 완료!");
+          const id = btn.dataset.id;
+          const ok = confirm("거절할까요?");
+          if (!ok) return;
+
+          const { error } = await supabase.rpc("reject_researcher_request", { req_id: id });
+          if (error) {
+            alert("거절 실패: " + error.message);
+            return;
+          }
           await loadPending();
         });
       });
     }
 
-    const ok = await requireOperator();
-    if (ok) loadPending();
+    async function logout() {
+      await supabase.auth.signOut();
+      location.href = "index.html";
+    }
+
+    // init
+    const user = await requireOperator();
+    if (user) await loadPending();
+
+    refreshBtn.addEventListener("click", loadPending);
+    logoutBtn.addEventListener("click", logout);
   </script>
 </body>
 </html>
