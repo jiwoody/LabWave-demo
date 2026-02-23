@@ -66,6 +66,21 @@
           <div id="status" style="margin-top:12px; color: rgba(234,242,255,0.75); font-size:13px;"></div>
         </div>
 
+        <!-- ✅ Researcher 권한 신청 섹션 추가 -->
+        <hr style="border:none; border-top:1px solid rgba(255,255,255,0.08); margin:22px 0;">
+
+        <h2 style="margin:0;">Researcher 권한</h2>
+        <p style="margin:10px 0 0; color: rgba(234,242,255,0.65); font-size:13px; line-height:1.6;">
+          Researcher는 칼럼 작성/수정 등 연구자 기능을 사용할 수 있어요. 신청 후 운영자 승인이 필요합니다.
+        </p>
+
+        <div class="form-actions" style="margin-top:14px;">
+          <button class="btn btn-primary" id="applyResearcherBtn" type="button">Researcher 권한 신청</button>
+          <a class="btn btn-ghost" href="admin.html" id="adminLink" style="display:none;">(운영자) 승인 페이지</a>
+        </div>
+
+        <div id="applyStatus" style="margin-top:10px; color: rgba(234,242,255,0.75); font-size:13px;"></div>
+
         <div style="margin-top: 18px;">
           <a class="btn btn-ghost btn-sm" href="topic-quantum.html#comments">댓글로 돌아가기</a>
         </div>
@@ -73,6 +88,195 @@
 
     </div>
   </main>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const SUPABASE_URL = "https://gjmffchyvthiwwhlwyam.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_U3s5fUx3Bm8TMs70FJawVA_aoCw7GOO";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const $ = (sel) => document.querySelector(sel);
+    const userEmailEl = $("#userEmail");
+    const userRoleEl = $("#userRole");
+
+    const nicknameInput = $("#nicknameInput");
+    const saveBtn = $("#saveBtn");
+    const logoutBtn = $("#logoutBtn");
+    const statusEl = $("#status");
+
+    const applyBtn = $("#applyResearcherBtn");
+    const applyStatusEl = $("#applyStatus");
+    const adminLink = $("#adminLink");
+
+    function setStatus(msg) {
+      statusEl.textContent = msg;
+    }
+    function setApplyStatus(msg) {
+      applyStatusEl.textContent = msg;
+    }
+
+    function normalizeNickname(v) {
+      return (v ?? "").trim();
+    }
+
+    async function requireLogin() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        location.href = "auth.html";
+        return null;
+      }
+      return user;
+    }
+
+    async function loadMyProfile(user) {
+      userEmailEl.textContent = user.email || "로그인됨";
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("nickname, role")
+        .eq("id", user.id)
+        .single();
+
+      if (error) {
+        setStatus("프로필을 불러오지 못했어요: " + error.message);
+        return null;
+      }
+
+      nicknameInput.value = data?.nickname ?? "";
+      const role = data?.role ?? "-";
+      userRoleEl.textContent = `role: ${role}`;
+
+      // 운영자면 admin 링크 보여주기
+      if (role === "operator") {
+        adminLink.style.display = "inline-flex";
+      } else {
+        adminLink.style.display = "none";
+      }
+
+      setStatus(data?.nickname ? "현재 닉네임이 설정되어 있어요." : "아직 닉네임이 없어요. 설정해볼까요?");
+      return data;
+    }
+
+    async function saveNickname(user) {
+      const nickname = normalizeNickname(nicknameInput.value);
+
+      if (nickname.length < 2 || nickname.length > 12) {
+        setStatus("닉네임은 2~12자로 입력해줘!");
+        return;
+      }
+
+      setStatus("저장 중...");
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({ nickname })
+        .eq("id", user.id);
+
+      if (error) {
+        setStatus("저장 실패: " + error.message);
+        return;
+      }
+
+      setStatus("저장 완료! 이제 댓글에 닉네임이 표시돼요.");
+    }
+
+    async function loadMyRequest(user, role) {
+      // 이미 researcher 이상이면 신청 필요 없음
+      if (role === "researcher" || role === "operator") {
+        applyBtn.disabled = true;
+        setApplyStatus(role === "operator"
+          ? "운영자 계정입니다. (신청 불필요)"
+          : "이미 Researcher 권한이 있어요. (신청 불필요)"
+        );
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("role_requests")
+        .select("status, created_at")
+        .eq("user_id", user.id)
+        .eq("requested_role", "researcher")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (error) {
+        setApplyStatus("신청 상태를 불러오지 못했어요: " + error.message);
+        applyBtn.disabled = false;
+        return;
+      }
+
+      const row = data?.[0];
+      if (!row) {
+        setApplyStatus("아직 신청 내역이 없어요.");
+        applyBtn.disabled = false;
+        return;
+      }
+
+      if (row.status === "pending") {
+        setApplyStatus("현재 신청이 접수되어 있어요. (승인 대기)");
+        applyBtn.disabled = true;
+      } else if (row.status === "approved") {
+        setApplyStatus("승인 완료! 이제 Researcher 기능을 사용할 수 있어요.");
+        applyBtn.disabled = true;
+      } else {
+        setApplyStatus("이전 신청이 거절되었어요. 필요하면 다시 신청할 수 있어요.");
+        applyBtn.disabled = false;
+      }
+    }
+
+    async function applyResearcher(user) {
+      setApplyStatus("신청 중...");
+
+      const { error } = await supabase
+        .from("role_requests")
+        .insert({
+          user_id: user.id,
+          requested_role: "researcher",
+          status: "pending",
+          message: "profile.html에서 신청"
+        });
+
+      if (error) {
+        setApplyStatus("신청 실패: " + error.message);
+        applyBtn.disabled = false;
+        return;
+      }
+
+      setApplyStatus("신청 완료! 운영자 승인 후 Researcher로 전환됩니다.");
+      applyBtn.disabled = true;
+    }
+
+    async function logout() {
+      await supabase.auth.signOut();
+      location.href = "index.html";
+    }
+
+    // init
+    const user = await requireLogin();
+    if (user) {
+      const profile = await loadMyProfile(user);
+      const role = profile?.role ?? "-";
+      await loadMyRequest(user, role);
+    }
+
+    saveBtn.addEventListener("click", async () => {
+      const u = await requireLogin();
+      if (!u) return;
+      await saveNickname(u);
+    });
+
+    applyBtn.addEventListener("click", async () => {
+      const u = await requireLogin();
+      if (!u) return;
+      applyBtn.disabled = true;
+      await applyResearcher(u);
+    });
+
+    logoutBtn.addEventListener("click", logout);
+  </script>
+</body>
+</html>
 
   <script type="module">
     async function getMyProfile() {
