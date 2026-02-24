@@ -162,7 +162,7 @@
       const nickname = normalizeNickname(nicknameInput.value);
 
       if (nickname.length < 2 || nickname.length > 12) {
-        setStatus("닉네임은 2~12자로 입력해줘!");
+        setStatus("닉네임은 2~12자로 입력해주세요!");
         return;
       }
 
@@ -358,7 +358,7 @@
       nicknameInput.value = data?.nickname ?? "";
       userRoleEl.textContent = `role: ${data?.role ?? "supporter"}`;
 
-      setStatus(data?.nickname ? "현재 닉네임이 설정되어 있어요." : "아직 닉네임이 없어요. 설정해볼까요?");
+      setStatus(data?.nickname ? "현재 닉네임이 설정되어 있어요." : "아직 닉네임이 없습니다. 설정해볼까요?");
     }
 
     // 중복 닉네임 검사 (본인 제외)
